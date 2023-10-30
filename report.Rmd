@@ -1,0 +1,8 @@
+Here is a regression model:
+
+```{r model, collapse=TRUE}
+options(digits = 4)
+fit <- lm(data = data())
+b   <- coef(fit)
+summary(fit)
+```
