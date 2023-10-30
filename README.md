@@ -107,41 +107,116 @@ snipes %>%
     dplyr::select(discount, brand, price) %>% 
     readr::write_csv("data/snipes.csv")
 ```
+
 ---
 
-### Automatic Reports
+## File Verification and Report Generation Using Shiny 🌟📑
 
-#### AR: Background
+### Introduction 📝
 
-Making reports is an important part of business because they facilitate data-driven decision-making, communication, accountability, and performance evaluation. Automatic reporting is useful because it streamlines the reporting process, reduces errors, provides real-time data, and offers scalability and customization options. In this exercise, you will implement an R Shiny Web App that automatically produces a report based on a file that a user inputs.
+This notebook outlines how to build a Shiny app to verify CSV files and generate downloadable PDF reports. The app will verify that the uploaded CSV file has exactly 3 columns.
 
-#### AR: Specifications
+### Pre-requisites 📦
 
-The shiny app has the following specifications.
+Load the necessary R packages.
 
-- For the **user interface**:
+```r
+library(shiny)
+library(readr)
+library(rmarkdown)
+```
 
-  - `fileInput` to let the user upload a file. You can choose whether to restrict to one or multiple file extension.
-  - `actionButton` that triggers verification on the file uploaded.
-  - `textOutput` that prints the verification.
-  - `downloadButton` in order to download a PDF report.
+### User Interface (UI) 🖥️
 
-- The **server** comprises three parts:
+The user interface of our Shiny app comprises a sidebar for file input and verification and a main panel for displaying the verification result and the download button for the report.
 
-  - Read the file and save it into a reactive object `data()`.
-  - Verification of the file into a `renderText`. At least the type of data must be tested. Depending on your report and the particular application, more tests can be added (number of lines, number of columns, ...).
-  - Production of the report into `downloadHandler`. The report is a Rmd file that is rendered within `downloadHandler` with the `rmarkdown::render` command. The format of the report must be PDF.
+```r
+ui <- fluidPage(
+  titlePanel("File Verification and Report Generator"),
+  sidebarLayout(
+    sidebarPanel(
+      fileInput("file", "Choose a CSV file", multiple = FALSE, accept = ".csv"),
+      actionButton("verifyButton", "Verify File")
+    ),
+    mainPanel(
+      textOutput("verificationResult"),
+      downloadButton("downloadReport", "Download Report")
+    )
+  )
+)
+```
 
-The report is provided as an additional `.Rmd` file. You can keep it simple, but at the very least, it should use the `data()` input by the user.
+### Server Logic 🖥️⚙️
 
-#### AR: Exercise
+Here, we define the server logic that dictates how the Shiny app will function.
 
-1. Build the shiny app that is described in the Specifications. Before building the Shiny app, we recommend that you look at these two examples:
+#### File Reading 📖
 
-    - [Download knitr Reports](https://shiny.posit.co/r/gallery/advanced-shiny/download-knitr-reports/),
-    - [File Upload](https://shiny.posit.co/r/gallery/widgets/file-upload/).
+This section reads the uploaded CSV file.
 
-2. Use the data fetched from **Snipes** as an input for your shiny app and produce a report. You may need to first save the data in the correct format before using it as an input for the shiny app.
+```r
+data <- reactive({
+  inFile <- input$file
+  if (is.null(inFile)) return(NULL)
+  read.csv(inFile$datapath)
+})
+```
+
+#### File Verification ✅❌
+
+We verify if the file has exactly 3 columns.
+
+```r
+verify_file <- eventReactive(input$verifyButton, {
+  if (is.null(data())) {
+    return("Please select a CSV file first.")
+  }
+  if (ncol(data()) == 3) {
+    return("File verification successful.")
+  } else {
+    return("File verification failed. Expected 3 columns.")
+  }
+})
+```
+
+#### Display Results 📋
+
+Display the verification result in the main panel.
+
+```r
+output$verificationResult <- renderText({
+  verify_file()
+})
+```
+
+#### Report Generation 📊📑
+
+Generate a downloadable PDF report.
+
+```r
+output$downloadReport <- downloadHandler(
+  filename = function() 'myreport.pdf',
+  
+  content = function(file) {
+    src <- normalizePath('report.Rmd')
+    
+    owd <- setwd(tempdir())
+    on.exit(setwd(owd))
+    file.copy(src, 'report.Rmd', overwrite = TRUE)
+    
+    out <- render('report.Rmd', output_format = 'pdf_document')
+    file.rename(out, file)
+  }
+)
+```
+
+### Run the Shiny App 🚀
+
+Execute the code to run the Shiny app.
+
+```r
+shinyApp(ui, server)
+```
 
 ---
 
