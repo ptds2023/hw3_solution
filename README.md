@@ -1,59 +1,133 @@
 # Homework 3
 
+## Snipes Data Web Scraping and Analysis 🕸️📊
 
+### Introduction 📝
 
+This notebook aims to scrape data from the Snipes website, specifically focusing on discounted shoes. We'll extract key information, create a data frame and visualise the discounts in relation to the original prices.
 
+### Pre-requisites 📦
 
+Load the necessary R packages.
 
+```r
+library(rvest)
+library(ggplot2)
+```
 
+### Legal and Ethical Check 📜
 
+Before proceeding with web scraping, ensure to check the website's robots.txt and terms of service.
 
+```r
+# The website's robots.txt does not mention /shoes*
+# Terms of Service are not clearly listed
+# Thus, web scraping appears to be tolerated
+```
 
+### Web Scraping 👨‍💻
 
+#### Fetching Website Data 🌐
 
+Connect to the Snipes website and read the HTML content.
 
+```r
+url <- "https://www.snipes.ch/fr/c/shoes?srule=Standard&prefn1=isSale&prefv1=true&openCategory=true&sz=48"
+website <- read_html(url) 
+```
 
+#### Extracting Product Information 🏷️
 
+We'll extract the following information: product name, brand, original price, and discounted price.
 
+##### Product Name
 
+```r
+product <- website %>% html_nodes("span.b-product-tile-link.js-product-tile-link") %>% html_text()
+```
 
+##### Brand Name
 
+```r
+brand <- website %>% html_nodes("span.b-product-tile-brand") %>% html_text()
+brand <- gsub("\n", "", brand) # Remove "\n"
+```
 
+##### Original Price
 
+```r
+price <- website %>% html_nodes("span.b-product-tile-price-item--line-through") %>% html_text()
+price <- gsub("\n", "", price) # Remove "\n"
+price <- gsub("CHF ", "", price) # Remove "CHF"
+price <- as.double(gsub(",", ".", price)) # Replace "," by "." and coerce to double
+```
 
 ### Automatic Reports
+##### Discounted Price
 
 #### AR: Background
+```r
+discount <- website %>% html_nodes("span.b-product-tile-price-outer.b-product-tile-price-outer--line-through+.b-product-tile-price-outer .b-product-tile-price-item") %>% html_text()
+discount <- gsub("\n", "", discount) # Remove "\n"
+discount <- gsub("CHF ", "", discount) # Remove "CHF"
+discount <- as.double(gsub(",", ".", discount)) # Replace "," by "." and coerce to double
+```
 
 Making reports is an important part of business because they facilitate data-driven decision-making, communication, accountability, and performance evaluation. Automatic reporting is useful because it streamlines the reporting process, reduces errors, provides real-time data, and offers scalability and customization options. In this exercise, you will implement an R Shiny Web App that automatically produces a report based on a file that a user inputs.
+### Data Aggregation and Analysis 📊
 
 #### AR: Specifications
+#### Creating Data Frame 📋
 
 The shiny app has the following specifications.
+Aggregate the scraped data into a data frame, also adding a column for the difference between the original price and discounted price.
 
 - For the **user interface**:
+```r
+snipes <- data.frame(product = product, brand = brand, price = price, discount = discount, difference = discount - price)
+```
 
   - `fileInput` to let the user upload a file. You can choose whether to restrict to one or multiple file extension.
   - `actionButton` that triggers verification on the file uploaded.
   - `textOutput` that prints the verification.
   - `downloadButton` in order to download a PDF report.
+#### Data Visualisation 📉
 
 - The **server** comprises three parts:
+Plotting the original price against the discount offered for each brand.
 
   - Read the file and save it into a reactive object `data()`.
   - Verification of the file into a `renderText`. At least the type of data must be tested. Depending on your report and the particular application, more tests can be added (number of lines, number of columns, ...).
   - Production of the report into `downloadHandler`. The report is a Rmd file that is rendered within `downloadHandler` with the `rmarkdown::render` command. The format of the report must be PDF.
+```r
+ggplot(snipes, 
+       aes(x = price, y = difference, color = brand)) + 
+  geom_point() +
+  geom_jitter() +
+  ylab("Absolute Discount") +
+  xlab("Original price") + 
+  theme_minimal()
+```
 
 The report is provided as an additional `.Rmd` file. You can keep it simple, but at the very least, it should use the `data()` input by the user.
+![](snipes2.png)
 
 #### AR: Exercise
+#### Save data frame to CSV 📄
 
 1. Build the shiny app that is described in the Specifications. Before building the Shiny app, we recommend that you look at these two examples:
+Will be helpful for the Shiny app. 😉
 
     - [Download knitr Reports](https://shiny.posit.co/r/gallery/advanced-shiny/download-knitr-reports/),
     - [File Upload](https://shiny.posit.co/r/gallery/widgets/file-upload/).
+```r
+snipes %>% 
+    select(discount, brand, price) %>% 
+    readr::write_csv("snipes.csv")
+```
 
 2. Use the data fetched from **Snipes** as an input for your shiny app and produce a report. You may need to first save the data in the correct format before using it as an input for the shiny app.
+---
 
 ---
 
