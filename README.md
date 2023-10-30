@@ -123,7 +123,7 @@ Will be helpful for the Shiny app. 😉
 ```r
 snipes %>% 
     select(discount, brand, price) %>% 
-    readr::write_csv("snipes.csv")
+    readr::write_csv("data/snipes.csv")
 ```
 
 2. Use the data fetched from **Snipes** as an input for your shiny app and produce a report. You may need to first save the data in the correct format before using it as an input for the shiny app.
