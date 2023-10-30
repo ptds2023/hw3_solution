@@ -1,59 +1,112 @@
 # Homework 3
 
-## Objectives :full_moon_with_face:
+## Snipes Data Web Scraping and Analysis 🕸️📊
 
-The objectives of this homework assignment are the followings:
+### Introduction 📝
 
-- 🌐 Gain proficiency in **web scraping** techniques to collect and process data for market analysis.
-- 📊 Master the development of **R Shiny Web Apps** for generating automatic reports, focusing on UI/UX design and server-side logic.
-- 👨‍💻 Understand and apply **Object-Oriented Programming (OOP)** principles in R for structuring and analysing corporate performance data.
-- 🛠️ Develop **data wrangling** skills for transforming real-world data into structured formats suitable for analysis.
-- 📈 Enhance your **data visualisation** capabilities by generating insightful plots and charts in R.
-- 🤔 Improve ethical considerations and responsible data handling, particularly in the context of web scraping.
-- 🎯 Enhance your understanding of performance metrics and their application in real-world scenarios.
+This notebook aims to scrape data from the Snipes website, specifically focusing on discounted shoes. We'll extract key information, create a data frame and visualise the discounts in relation to the original prices.
 
-## Deadline :alarm_clock:
+### Pre-requisites 📦
 
-Submit the homework by Wednesday, 15th November 2023 at 23:59 by pushing to the dedicated repository.
+Load the necessary R packages.
 
-## Requirements :warning:
+```r
+library(rvest)
+library(ggplot2)
+```
 
-This homework **must** be accomplished using the appropriate GitHub template and must respect the following requirements:
+### Legal and Ethical Check 📜
 
-- 👥 Ensure that all commit messages are reasonably clear and meaningful.
-- 📝 Your GitHub repository must include at least the following:
-  - One issue containing some form of **TO DO** list.
-  - One pull request followed by a merging.
-- 🗂️ Organisation and progress must appear clearly in **GitHub Projects**.
-- 🌿 Make sure to create a separate branch for development before making a pull request to the main or master branch.
-- 📚 If the solution involves multiple **RMarkdown files**, they should be clearly numbered or named to indicate the order in which they should be read or executed.
-- 📁 Any data files used or generated must be stored in a specific `data/` folder within the GitHub repository.
-- 📋 Make sure to update the `README.md` file with instructions on how to run your code, and a brief overview of what each RMarkdown file covers.
+Before proceeding with web scraping, ensure to check the website's robots.txt and terms of service.
 
-## Content :rocket:
+```r
+# https://www.snipes.ch/robots.txt
+# The website's robots.txt does not mention /shoes*
+# Terms of Service are not clearly listed
+# Thus, web scraping appears to be tolerated
+```
 
-### Snipes
+### Web Scraping 👨‍💻
 
-#### Snipes: Background
+#### Fetching Website Data 🌐
 
-Suppose you have as a client a small company specializing in the sale of sneakers. Your client is interested in knowing the pricing of their primary competitor **Snipes** for various sneaker models and understanding their promotional strategies. This information will help your client develop an effective pricing and marketing strategy.
+Connect to the Snipes website and read the HTML content.
 
-#### Snipes: Objective
+```r
+url <- "https://www.snipes.ch/fr/c/shoes?srule=Standard&prefn1=isSale&prefv1=true&openCategory=true&sz=48"
+website <- read_html(url) 
+```
 
-Your task is to webscrape promotions of sneakers on **Snipes**. For the correction of this exercise, we use the Swiss website of Snipes in French that you can find following this [link](https://www.snipes.ch/fr/c/shoes?srule=Standard&prefn1=isSale&prefv1=true&openCategory=true&sz=48), however you can decide to webscrape Snipes web site for another location and/or language.
+#### Extracting Product Information 🏷️
 
-#### Snipes: Tasks
+We'll extract the following information: product name, brand, original price, and discounted price.
 
-1. Can you find explicit evidence that webscrape is forbidden on Snipes? Do you think it is ethical to webscrap this site? What would be the ideal way to proceed?
+##### Product Name
 
-2. Using CSS selectors, fetch information about the name of the product, the brand, the original price and the discounted price for all the products on the page as illustrated in the image below. We would like to have the name of the product and the brand as strings, and the prices as doubles. If necessary, transform the data to obtain the desired output. You may need to use a function such as `gsub(pattern, replacement, x)`.
+```r
+product <- website %>% html_nodes("span.b-product-tile-link.js-product-tile-link") %>% html_text()
+```
 
-    ![snipes](snipes.jpg)
+##### Brand Name
 
-3. Create a dataframe with all the information gathered in point 2. and make a plot such as the one below where absolute discount is defined as the difference between the discounted price minus the original price. Some points are overplotted, i.e., two or more points are at the same location. Propose a solution such that all the points are distinguished on the plot.
+```r
+brand <- website %>% html_nodes("span.b-product-tile-brand") %>% html_text()
+brand <- gsub("\n", "", brand) # Remove "\n"
+```
 
-    ![snipes2](snipes2.png)
+##### Original Price
 
+```r
+price <- website %>% html_nodes("span.b-product-tile-price-item--line-through") %>% html_text()
+price <- gsub("\n", "", price) # Remove "\n"
+price <- gsub("CHF ", "", price) # Remove "CHF"
+price <- as.double(gsub(",", ".", price)) # Replace "," by "." and coerce to double
+```
+
+##### Discounted Price
+
+```r
+discount <- website %>% html_nodes("span.b-product-tile-price-outer.b-product-tile-price-outer--line-through+.b-product-tile-price-outer .b-product-tile-price-item") %>% html_text()
+discount <- gsub("\n", "", discount) # Remove "\n"
+discount <- gsub("CHF ", "", discount) # Remove "CHF"
+discount <- as.double(gsub(",", ".", discount)) # Replace "," by "." and coerce to double
+```
+
+### Data Aggregation and Analysis 📊
+
+#### Creating Data Frame 📋
+
+Aggregate the scraped data into a data frame, also adding a column for the difference between the original price and discounted price.
+
+```r
+snipes <- data.frame(product = product, brand = brand, price = price, discount = discount, difference = discount - price)
+```
+
+#### Data Visualisation 📉
+
+Plotting the original price against the discount offered for each brand.
+
+```r
+ggplot(snipes, 
+       aes(x = price, y = difference, color = brand)) + 
+  geom_point() +
+  geom_jitter() +
+  ylab("Absolute Discount") +
+  xlab("Original price") + 
+  theme_minimal()
+```
+
+![snipes2](snipes2.png)
+
+#### Save data frame to CSV 📄
+
+Will be helpful for future analysis.
+
+```r
+snipes %>% 
+    dplyr::select(discount, brand, price) %>% 
+    readr::write_csv("data/snipes.csv")
+```
 ---
 
 ### Automatic Reports
